@@ -135,6 +135,7 @@ the project you used most recently. The bottom line names the watched project.
 
 - **MAIN** (top): model, effort, run time, tokens, cost, the **context gauge**, peak context, today's output share,
   and the last thing the assistant said (secrets and e-mail addresses masked).
+  One row per open session: a session you replaced with `/clear` is hidden (its tokens still count in the totals).
 - **Agent panes** (grid): titled with the agent's task; a spinner in the border moves only while it is working.
 - **Bottom line:** agents (live / stalled / done / over budget), total tokens and cost, **burn rate**, project, filter.
 

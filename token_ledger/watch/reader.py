@@ -282,6 +282,8 @@ class _State:
     offset: int = 0
     first_ts: object = None
     last_ts: object = None
+    any_ts: object = None  # newest timestamp on any record type, not just user/assistant turns
+    cleared_at: object = None  # set when this transcript was started by /clear
     model: object = None
     effort: object = None
     brief: str = ""
@@ -355,11 +357,57 @@ def _text_of(content):
     return ""
 
 
+def _is_clear(d):
+    if d.get("type") == "system" and d.get("subtype") == "local_command":
+        run = d.get("commandRun")
+        if isinstance(run, str):
+            try:
+                run = json.loads(run)
+            except ValueError:
+                run = {}
+        return isinstance(run, dict) and run.get("command") == "clear"
+    msg = d.get("message")
+    content = msg.get("content") if isinstance(msg, dict) else None
+    return d.get("type") == "user" and isinstance(content, str) and "<command-name>/clear</command-name>" in content
+
+
+# /clear closes the old transcript and opens a new one in the same instant; the old file's last record
+# lands within this window of the new file's clear record.
+CLEAR_MATCH_SECONDS = 60
+
+
+def _drop_cleared(mains, states):
+    """Hide main sessions that a later /clear replaced. Each clear retires at most one session: the
+    other main whose last record is closest to the clear time and within CLEAR_MATCH_SECONDS."""
+    gone = set()
+    for m in mains:
+        at = states[m.session_id].cleared_at
+        if at is None:
+            continue
+        best, gap = None, None
+        for o in mains:
+            if o.session_id == m.session_id or o.session_id in gone:
+                continue
+            last = states[o.session_id].any_ts or o.last_activity
+            if o.started >= at or last is None:
+                continue
+            d = abs((at - last).total_seconds())
+            if d <= CLEAR_MATCH_SECONDS and (gap is None or d < gap):
+                best, gap = o.session_id, d
+        if best:
+            gone.add(best)
+    return [m for m in mains if m.session_id not in gone], len(gone)
+
+
 def _ingest(st, d):
     if not isinstance(d, dict):
         return
     t = d.get("type")
     ts = _ts(d.get("timestamp")) if d.get("timestamp") else None
+    if ts:
+        st.any_ts = ts
+    if st.cleared_at is None and ts and _is_clear(d):
+        st.cleared_at = ts
     if t not in ("user", "assistant"):
         return
     if ts:
@@ -543,6 +591,7 @@ def scan(project_dir=DEFAULT_DIR, stalled_after=180, since_hours=24, dismissed=(
     nowt = time.time()
     cutoff = nowt - since_hours * 3600
     mains, agents = [], []
+    main_states = {}
     tot = {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0, "total": 0}
     cost_sum, cost_known = 0.0, False
     for mp in glob.glob(os.path.join(project_dir, "*.jsonl")):
@@ -561,6 +610,7 @@ def scan(project_dir=DEFAULT_DIR, stalled_after=180, since_hours=24, dismissed=(
         started = st.first_ts or datetime.fromtimestamp(os.path.getmtime(mp), timezone.utc)
         last = st.last_ts or started
         title = _load_json(os.path.join(project_dir, sid, "custom-title.json")).get("customTitle", "")
+        main_states[sid] = st
         mains.append(MainView(sid, title if isinstance(title, str) else "", st.model, st.effort, started, last,
                               st.context_tokens, tok, cost, st.last_text, mp, (now - started).total_seconds(),
                               st.peak_context))
@@ -628,11 +678,13 @@ def scan(project_dir=DEFAULT_DIR, stalled_after=180, since_hours=24, dismissed=(
         if cost is not None:
             cost_sum += cost
             cost_known = True
+    mains, cleared = _drop_cleared(mains, main_states)
     mains.sort(key=lambda m: m.last_activity, reverse=True)
     agents.sort(key=lambda a: a.last_activity, reverse=True)
     totals = {"agents_live": sum(a.state == "live" for a in agents),
               "agents_stalled": sum(a.state == "stalled" for a in agents),
               "agents_done": sum(a.state == "done" for a in agents),
+              "mains_cleared": cleared,
               "tokens": tot, "cost_usd": cost_sum if cost_known else None,
               "agents_over_budget": sum(a.over_budget for a in agents),
               "burn_tokens": burn, "burn_minutes": burn_minutes,

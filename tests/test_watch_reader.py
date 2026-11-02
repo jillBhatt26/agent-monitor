@@ -372,3 +372,35 @@ class TestLabels(Base):
         self.assertEqual(a.last_action, "reading foo.py")
         self.assertTrue(a.last_tool.startswith("Read"))
         self.assertTrue(a.plan.startswith("Plan 047 · checkout_flow"))
+
+
+class ClearTests(Base):
+    def clear_rec(self, ago):
+        return {"type": "system", "subtype": "local_command", "timestamp": iso(ago),
+                "content": "<local-command-stdout></local-command-stdout>", "commandRun": {"command": "clear", "args": ""}}
+
+    def new_session(self, sid, clear_ago):
+        self.write_lines(os.path.join(self.dir, sid + ".jsonl"),
+                         [self.clear_rec(clear_ago), user("next task", clear_ago - 5),
+                          asst("n-" + sid, clear_ago - 10, [{"type": "text", "text": "on it"}])])
+
+    def test_cleared_session_hidden_but_counted(self):
+        # base session's last record is 400 s ago; /clear lands 2 s later
+        self.new_session("sess-2", 398)
+        snap = reader.scan(self.dir)
+        self.assertEqual([m.session_id for m in snap.mains], ["sess-2"])
+        self.assertEqual(snap.totals["mains_cleared"], 1)
+        self.assertEqual(snap.totals["tokens"]["output"], 10)
+
+    def test_parallel_session_not_hidden(self):
+        # a /clear long after the other session's last record does not retire it
+        self.new_session("sess-2", 100)
+        snap = reader.scan(self.dir)
+        self.assertEqual(sorted(m.session_id for m in snap.mains), ["sess-1", "sess-2"])
+        self.assertEqual(snap.totals["mains_cleared"], 0)
+
+    def test_clear_as_user_command_text(self):
+        rec = user("<command-name>/clear</command-name>\n<command-message>clear</command-message>", 399)
+        self.write_lines(os.path.join(self.dir, "sess-3.jsonl"),
+                         [rec, asst("n3", 390, [{"type": "text", "text": "ok"}])])
+        self.assertEqual([m.session_id for m in reader.scan(self.dir).mains], ["sess-3"])
