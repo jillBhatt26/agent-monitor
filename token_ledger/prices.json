@@ -1,0 +1,30 @@
+{
+  "source_url": "https://platform.claude.com/docs/en/about-claude/pricing",
+  "verified": "2026-10-16",
+  "unit": "USD per million tokens (list price; an estimate, not a bill)",
+  "models": {
+    "fable-5-1":  {"in": 10,  "w5m": 12.5,  "w1h": 20,  "read": 0.25, "out": 50},
+    "fable-5":    {"in": 10,  "w5m": 12.5,  "w1h": 20,  "read": 1,    "out": 50},
+    "opus-5-5":   {"in": 4,   "w5m": 5,     "w1h": 8,   "read": 0.20, "out": 20},
+    "opus-5":     {"in": 5,   "w5m": 6.25,  "w1h": 10,  "read": 0.5,  "out": 25},
+    "opus-4-8":   {"in": 5,   "w5m": 6.25,  "w1h": 10,  "read": 0.5,  "out": 25},
+    "opus-4-7":   {"in": 5,   "w5m": 6.25,  "w1h": 10,  "read": 0.5,  "out": 25},
+    "opus-4-6":   {"in": 5,   "w5m": 6.25,  "w1h": 10,  "read": 0.5,  "out": 25},
+    "opus-4-5":   {"in": 5,   "w5m": 6.25,  "w1h": 10,  "read": 0.5,  "out": 25},
+    "sonnet-5-5": {"in": 2,   "w5m": 2.5,   "w1h": 4,   "read": 0.10, "out": 10},
+    "sonnet-5":   {"in": 2,   "w5m": 2.5,   "w1h": 4,   "read": 0.20, "out": 10},
+    "sonnet-4-6": {"in": 3,   "w5m": 3.75,  "w1h": 6,   "read": 0.3,  "out": 15},
+    "sonnet-4-5": {"in": 3,   "w5m": 3.75,  "w1h": 6,   "read": 0.3,  "out": 15},
+    "haiku-4-5":  {"in": 1,   "w5m": 1.25,  "w1h": 2,   "read": 0.1,  "out": 5}
+  },
+  "tiered": {
+    "haiku-5-5": {
+      "threshold_prompt_tokens": 100000,
+      "low":  {"in": 0.10, "w5m": 0.125, "w1h": 0.20, "read": 0.01, "out": 0.50},
+      "high": {"in": 0.50, "w5m": 0.625, "w1h": 1,    "read": 0.05, "out": 2.50}
+    }
+  },
+  "fast": {
+    "opus-5-5": {"in": 8, "out": 40, "w5m_mult": 1.25, "w1h_mult": 2, "read_mult": 0.05}
+  }
+}

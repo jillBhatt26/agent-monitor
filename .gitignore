@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.devdata/
+.venv-watch/
+.venv*/
+*.sqlite
+*.log
+dashboard.html
