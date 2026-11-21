@@ -71,6 +71,8 @@ class AppTests(Base):
             async with app.run_test() as pilot:
                 await pilot.pause(0.5)
                 main = str(app.query_one("#main").render())
+                await pilot.press("2")  # Plans is the default screen; "a" opens Analytics from All agents
+                await pilot.pause(0.2)
                 await pilot.press("a")
                 await pilot.pause(0.5)
                 shown = isinstance(app.screen, Analytics)

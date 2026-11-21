@@ -51,6 +51,7 @@ def build_parser():
     s.add_argument("--stalled-after", type=int, default=180, metavar="SECONDS")
     s.add_argument("--since-hours", type=int, default=24)
     s.add_argument("--project-dir")
+    s.add_argument("--dump-plans", action="store_true", help="print the Plans screen as text and exit")
     s = sub.add_parser("agents", parents=[common], help="one-shot snapshot of the main session and its agents (no TUI)")
     s.add_argument("--stalled-after", type=int, default=180, metavar="SECONDS")
     s.add_argument("--since-hours", type=int, default=24)
@@ -172,6 +173,10 @@ def cmd_watch(cfg, a):
     """Textual lives in .venv-watch (the system Python may be externally managed)."""
     from .watch import reader
     project = os.path.expanduser(a.project_dir) if a.project_dir else reader.detect_project_dir()
+    if a.dump_plans:
+        from .watch import plans_view
+        print(plans_view.dump_main(project, a.stalled_after, a.since_hours))
+        return 0
     if not project:
         print("No Claude Code project found under ~/.claude/projects. Start a Claude Code session first, "
               "or pass --project-dir.")
